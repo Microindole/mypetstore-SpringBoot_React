@@ -55,16 +55,8 @@ const Login = () => {
     };
 
     const handleGitHubLogin = () => {
-        const clientId = "Ov23lieIV1CXDvFjY4yt"; // 替换为你的 GitHub 应用的 Client ID
-        const redirectUri = "http://localhost:8070/api/oauth/callback"; // 替换为你的回调地址
-        const state = "random_state_value"; // 可生成随机值以防止 CSRF 攻击
-        const scope = "user"; // 根据需要设置权限范围
-
-        // 构建 GitHub OAuth URL
-        const githubOAuthUrl = `https://github.com/login/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=${scope}`;
-
-        // 重定向到 GitHub 登录页面
-        window.location.href = githubOAuthUrl;
+        window.location.href = "http://localhost:8070/api/oauth/render";
+        
     };
 
     return (

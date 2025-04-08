@@ -1,40 +1,111 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { useContext } from "react";
+import { UserContext } from "/src/context/UserContext";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 const GitHubCallback = () => {
     const navigate = useNavigate();
+    const [isLoginSuccessful, setIsLoginSuccessful] = useState(false); // 登录状态
+    const [errorMessage, setErrorMessage] = useState(""); // 错误消息
+    const { setUsername } = useContext(UserContext);
 
     useEffect(() => {
         // 获取 URL 中的查询参数
         const queryParams = new URLSearchParams(window.location.search);
-        const code = queryParams.get("code"); // GitHub 返回的授权码
+        const token = queryParams.get("token");
+        const username = queryParams.get("username");
 
-        if (code) {
-            // 将授权码发送到后端以完成登录
-            axios
-                .post("http://localhost:8070/api/oauth/callback", { code })
-                .then((response) => {
-                    if (response.data.status === 0) {
-                        // 保存令牌到本地存储
-                        localStorage.setItem("token", response.data.token);
-                        alert("登录成功！");
-                        navigate("/catalog/index"); // 跳转到主页
-                    } else {
-                        alert("登录失败：" + response.data.msg);
-                    }
-                })
-                .catch((error) => {
-                    console.error("GitHub 登录失败：", error);
-                    alert("登录过程中发生错误，请稍后再试！");
-                });
-        } else {
-            alert("未获取到授权码！");
-            navigate("/account/login"); // 跳转回登录页面
+        if (!token || token === "null") {
+            // 如果 token 不存在或为 "null"，提示用户以 username 注册账号
+            alert(`未检测到有效的登录令牌，请以用户名 "${username}" 注册一个账号！`);
+            navigate("/account/register"); // 跳转到注册页面并传递用户名
+            return;
         }
-    }, [navigate]);
 
-    return <div>正在处理登录，请稍候...</div>;
+        // 保存 token 到本地存储
+        localStorage.setItem("token", token);
+
+        const fetchUserData = async () => {
+            try {
+                console.log("Token:", token);
+                const response = await axios.post(
+                    "/api/account",
+                    null,
+                    {
+                        headers: {
+                            Authorization: `${token}`, // 确保添加 Bearer 前缀
+                        },
+                        withCredentials: true,
+                    }
+                );
+                if (response.data.status === 0) {
+                    setIsLoginSuccessful(true); // 登录成功
+                    const thisname = response.data.data.username; // 假设后端返回 { username: "JohnDoe" }
+                    setUsername(thisname);
+                } else {
+                    alert("无法获取用户信息，请稍后再试！");
+                }
+            } catch (error) {
+                console.error("获取用户信息失败：", error);
+                setErrorMessage("登录过程中发生错误，请稍后再试！");
+            }
+        };
+
+        // 调用 fetchUserData
+        fetchUserData();
+    }, [navigate, setUsername]);
+
+    const handleCompleteLogin = () => {
+        navigate("/catalog/index"); // 跳转到主页
+    };
+
+    return (
+        <div style={{ textAlign: "center", marginTop: "50px" }}>
+            {isLoginSuccessful ? (
+                <div>
+                    <h2>登录成功！</h2>
+                    <button
+                        onClick={handleCompleteLogin}
+                        style={{
+                            padding: "10px 20px",
+                            fontSize: "16px",
+                            backgroundColor: "#4CAF50",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "5px",
+                            cursor: "pointer",
+                        }}
+                    >
+                        完成登录
+                    </button>
+                </div>
+            ) : errorMessage ? (
+                <div>
+                    <h2>登录失败</h2>
+                    <p>{errorMessage}</p>
+                    <button
+                        onClick={() => navigate("/account/login")}
+                        style={{
+                            padding: "10px 20px",
+                            fontSize: "16px",
+                            backgroundColor: "#f44336",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "5px",
+                            cursor: "pointer",
+                        }}
+                    >
+                        返回登录页面
+                    </button>
+                </div>
+            ) : (
+                <div>
+                    <h2>正在处理登录，请稍候...</h2>
+                </div>
+            )}
+        </div>
+    );
 };
 
 export default GitHubCallback;
